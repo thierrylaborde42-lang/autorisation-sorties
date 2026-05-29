@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestion des sorties pédagogiques</title>
+  <style>
+    :root {
+      --primary:#1f4e79; --secondary:#e8f0f8; --accent:#2f6fa3; --success:#2e7d32;
+      --warning:#b26a00; --danger:#b00020; --light:#f7f9fb; --border:#d7dee8; --text:#1d2733;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--light);color:var(--text)}
+    header{background:var(--primary);color:white;padding:18px 24px}
+    header h1{margin:0;font-size:23px} header p{margin:6px 0 0;font-size:14px;opacity:.95}
+    .container{max-width:1180px;margin:22px auto;padding:0 18px}
+    .card{background:white;border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+    .login{max-width:520px;margin:40px auto}
+    label{display:block;font-weight:bold;margin:12px 0 6px}
+    input,select,textarea{width:100%;padding:10px;border:1px solid #b9c4d0;border-radius:7px;font-size:14px;background:white}
+    textarea{min-height:90px;resize:vertical}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+    button{background:var(--primary);color:white;border:none;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:bold}
+    button.secondary{background:#5b6773} button.success{background:var(--success)} button.warning{background:var(--warning)} button.danger{background:var(--danger)}
+    button.lightbtn{background:white;color:var(--primary);border:1px solid var(--primary)}
+    nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+    nav button{background:white;color:var(--primary);border:1px solid var(--primary)} nav button.active{background:var(--primary);color:white}
+    table{width:100%;border-collapse:collapse;margin-top:10px;background:white} th,td{border:1px solid var(--border);padding:9px;text-align:left;font-size:13px;vertical-align:top} th{background:var(--secondary)}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:bold}
+    .pending{background:#fff3cd;color:#7a5700}.approved{background:#d4edda;color:#1b5e20}.refused{background:#f8d7da;color:#7f1d1d}
+    .hidden{display:none!important}.muted{color:#667085;font-size:13px}.note-preview{white-space:pre-wrap;background:#fbfcfe;border:1px solid var(--border);border-radius:8px;padding:14px;line-height:1.45}
+    .agenda-item{border-left:5px solid var(--accent);padding:10px 12px;margin:10px 0;background:#f8fbff;border-radius:8px}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:1000;overflow:auto}
+    .modal{background:white;max-width:950px;width:100%;border-radius:12px;border:1px solid var(--border);box-shadow:0 12px 40px rgba(0,0,0,.25);padding:20px}
+    .detail-section{border:1px solid var(--border);border-radius:8px;padding:12px;margin:12px 0;background:#fbfcfe}
+    .detail-grid{display:grid;grid-template-columns:220px 1fr;gap:8px 12px;font-size:14px}
+    .detail-label{font-weight:bold;color:#344054}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}.role{font-weight:bold;background:rgba(255,255,255,.15);padding:6px 10px;border-radius:20px}
+    @media(max-width:800px){.grid,.grid3{grid-template-columns:1fr}.topbar{display:block}}
+    @media print{header,nav,.actions,.no-print{display:none!important}.container{max-width:100%;margin:0}.card{box-shadow:none;border:none}.note-preview{border:none}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div><h1>Application de gestion des sorties pédagogiques</h1><p>Demande, validation, agenda et note de service</p></div>
+    <div id="sessionInfo" class="role hidden"></div>
+  </div>
+</header>
+
+<div class="container">
+  <section id="loginSection" class="card login">
+    <h2>Connexion sécurisée</h2>
+    <p class="muted">Version HTML locale. Les mots de passe sont modifiables dans le code du fichier, rubrique <strong>CONFIGURATION</strong>.</p>
+    <label>Profil</label>
+    <select id="loginRole">
+      <option value="proviseur">Proviseur</option>
+      <option value="adjoint">Adjoint</option>
+      <option value="secretaire">Secrétaire général</option>
+      <option value="enseignant">Enseignant / porteur de projet</option>
+    </select>
+    <label>Mot de passe</label>
+    <input id="loginPassword" type="password" placeholder="Saisir le mot de passe" />
+    <div class="actions"><button onclick="login()">Se connecter</button></div>
+    <p id="loginError" class="muted" style="color:var(--danger)"></p>
+    <hr>
+  </section>
+
+  <section id="appSection" class="hidden">
+    <nav class="no-print">
+      <button id="tabFormBtn" onclick="showTab('form')">Nouvelle demande</button>
+      <button id="tabDashboardBtn" onclick="showTab('dashboard')">Tableau de bord</button>
+      <button id="tabAgendaBtn" onclick="showTab('agenda')">Agenda</button>
+      <button id="tabNotesBtn" onclick="showTab('notes')">Notes de service</button>
+      <button class="secondary" onclick="logout()">Déconnexion</button>
+    </nav>
+
+    <div id="formTab" class="card">
+      <h2>Formulaire de demande de sortie pédagogique</h2>
+      <div class="grid">
+        <div><label>Nom du porteur de projet</label><input id="teacherName" placeholder="Nom Prénom"></div>
+        <div><label>Courriel du porteur</label><input id="teacherEmail" type="email" placeholder="prenom.nom@ac-bordeaux.fr"></div>
+        <div><label>Intitulé de la sortie</label><input id="title" placeholder="Ex. Visite du tribunal judiciaire"></div>
+        <div><label>Classe(s) concernée(s)</label><input id="classes" placeholder="Ex. 1STMG1, 1STMG2"></div>
+        <div><label>Date</label><input id="date" type="date"></div>
+        <div><label>Horaires</label><input id="hours" placeholder="Ex. 8h30 - 17h00"></div>
+        <div><label>Lieu</label><input id="place" placeholder="Lieu précis"></div>
+        <div><label>Nombre d'élèves</label><input id="students" type="number" min="1"></div>
+      </div>
+      <div class="grid3">
+        <div><label>Transport à réserver ?</label><select id="transport"><option>Non</option><option>Oui</option></select></div>
+        <div><label>Pique-niques à prévoir ?</label><select id="picnic"><option>Non</option><option>Oui</option></select></div>
+        <div><label>Autorisations parentales nécessaires ?</label><select id="authorizations"><option>Oui</option><option>Non</option></select></div>
+      </div>
+      <label>Objectifs pédagogiques</label><textarea id="objectives" placeholder="Objectifs, lien avec les programmes, compétences travaillées..."></textarea>
+      <label>Accompagnateurs prévus</label><textarea id="chaperones" placeholder="Noms des accompagnateurs pressentis"></textarea>
+      <label>Observations particulières / PAI / sécurité</label><textarea id="pai" placeholder="PAI connus, vigilance particulière, consignes de sécurité..."></textarea>
+      <div class="actions"><button onclick="submitRequest()">Enregistrer la demande</button><button class="lightbtn" onclick="resetForm()">Réinitialiser</button></div>
+    </div>
+
+    <div id="dashboardTab" class="card hidden">
+      <h2>Tableau de bord des demandes</h2>
+      <p class="muted">Pour le proviseur, la validation se fait après ouverture de la fiche complète avec le bouton « Examiner avant validation ».</p>
+      <div class="actions no-print"><button onclick="exportCSV()">Exporter CSV</button><button class="danger" onclick="clearDemoData()">Effacer les données locales</button></div>
+      <div id="requestsTable"></div>
+    </div>
+
+    <div id="agendaTab" class="card hidden">
+      <h2>Agenda des sorties validées</h2>
+      <p class="muted">Seules les sorties validées par le proviseur apparaissent ici. Chaque événement peut être exporté au format agenda .ics.</p>
+      <div id="agendaList"></div>
+    </div>
+
+    <div id="notesTab" class="card hidden">
+      <h2>Notes de service générées</h2>
+      <p class="muted">Après validation par le proviseur, une note de service est générée automatiquement.</p>
+      <div id="notesList"></div>
+    </div>
+  </section>
+</div>
+
+<div id="requestModal" class="modal-backdrop hidden no-print">
+  <div class="modal">
+    <div class="topbar">
+      <h2 style="margin:0">Visualisation complète de la demande</h2>
+      <button class="secondary" onclick="closeRequestModal()">Fermer</button>
+    </div>
+    <div id="requestDetailContent"></div>
+    <div id="requestDetailActions" class="actions"></div>
+  </div>
+</div>
+
+<script>
+// ================= CONFIGURATION SIMPLE =================
+const PASSWORDS = {
+  proviseur: 'proviseur2026',
+  adjoint: 'adjoint2026',
+  secretaire: 'secretariat2026',
+  enseignant: 'enseignant2026'
+};
+const ROLE_LABELS = {proviseur:'Proviseur', adjoint:'Adjoint', secretaire:'Secrétaire général', enseignant:'Enseignant'};
+const STORAGE_KEY = 'sorties_pedagogiques_secure_v1';
+let currentRole = null;
+
+function login(){
+  const role = document.getElementById('loginRole').value;
+  const pwd = document.getElementById('loginPassword').value;
+  if(pwd === PASSWORDS[role]){
+    currentRole = role;
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('appSection').classList.remove('hidden');
+    document.getElementById('sessionInfo').classList.remove('hidden');
+    document.getElementById('sessionInfo').textContent = 'Connecté : ' + ROLE_LABELS[role];
+    configureRoleUI(); showTab(role==='enseignant'?'form':'dashboard');
+  } else document.getElementById('loginError').textContent = 'Mot de passe incorrect.';
+}
+function logout(){ currentRole=null; document.getElementById('appSection').classList.add('hidden'); document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('loginPassword').value=''; document.getElementById('sessionInfo').classList.add('hidden'); }
+function configureRoleUI(){
+  document.getElementById('tabFormBtn').style.display = currentRole==='enseignant' ? 'inline-block' : 'none';
+}
+function showTab(tab){
+  ['form','dashboard','agenda','notes'].forEach(t=>{document.getElementById(t+'Tab').classList.toggle('hidden',t!==tab); const b=document.getElementById('tab'+cap(t)+'Btn'); if(b)b.classList.toggle('active',t===tab);});
+  if(tab==='dashboard') renderDashboard(); if(tab==='agenda') renderAgenda(); if(tab==='notes') renderNotes();
+}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function load(){ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }
+function save(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function val(id){return document.getElementById(id).value.trim();}
+function submitRequest(){
+  const required=['teacherName','teacherEmail','title','classes','date','hours','place','students','objectives'];
+  for(const id of required){ if(!val(id)){ alert('Veuillez compléter le champ : '+document.querySelector('label[for="'+id+'"]')?.textContent || id); return; }}
+  const data=load();
+  data.push({ id:Date.now(), status:'pending', createdAt:new Date().toISOString(), validatedAt:null,
+    teacherName:val('teacherName'), teacherEmail:val('teacherEmail'), title:val('title'), classes:val('classes'), date:val('date'), hours:val('hours'), place:val('place'), students:val('students'), transport:val('transport'), picnic:val('picnic'), authorizations:val('authorizations'), objectives:val('objectives'), chaperones:val('chaperones'), pai:val('pai'), refusalReason:'' });
+  save(data); alert('Demande enregistrée. Elle est désormais visible par le proviseur pour validation.'); resetForm(); showTab('dashboard');
+}
+function resetForm(){ ['teacherName','teacherEmail','title','classes','date','hours','place','students','objectives','chaperones','pai'].forEach(id=>document.getElementById(id).value=''); }
+function statusBadge(s){ return s==='approved'?'<span class="badge approved">Validée</span>':s==='refused'?'<span class="badge refused">Refusée</span>':'<span class="badge pending">En attente</span>'; }
+function renderDashboard(){
+  const data=load();
+  if(!data.length){ document.getElementById('requestsTable').innerHTML='<p class="muted">Aucune demande enregistrée.</p>'; return; }
+  let html='<table><thead><tr><th>Statut</th><th>Date</th><th>Sortie</th><th>Classes</th><th>Porteur</th><th>Besoins</th><th>Actions</th></tr></thead><tbody>';
+  data.forEach(r=>{ html+=`<tr><td>${statusBadge(r.status)}</td><td>${fmtDate(r.date)}<br>${esc(r.hours)}</td><td><strong>${esc(r.title)}</strong><br>${esc(r.place)}</td><td>${esc(r.classes)}<br>${esc(r.students)} élèves</td><td>${esc(r.teacherName)}<br>${esc(r.teacherEmail)}</td><td>Transport : ${r.transport}<br>Pique-niques : ${r.picnic}<br>Autorisations : ${r.authorizations}</td><td>${actionsFor(r)}</td></tr>`; });
+  html+='</tbody></table>'; document.getElementById('requestsTable').innerHTML=html;
+}
+function actionsFor(r){
+  let a=`<button class="lightbtn" onclick="viewRequest(${r.id})">Voir la demande complète</button> <button class="lightbtn" onclick="viewNote(${r.id})">Voir note</button> <button class="lightbtn" onclick="downloadICS(${r.id})">Agenda .ics</button>`;
+  if(currentRole==='proviseur' && r.status==='pending') a = `<button class="lightbtn" onclick="viewRequest(${r.id})">Examiner avant validation</button> `+a.replace(`<button class="lightbtn" onclick="viewRequest(${r.id})">Voir la demande complète</button> `,'');
+  if(currentRole==='proviseur') a += ` <button class="warning" onclick="deleteReq(${r.id})">Supprimer</button>`;
+  return a;
+}
+function viewRequest(id){
+  const r=load().find(x=>x.id===id); if(!r)return;
+  const statusText = r.status==='approved'?'Validée':r.status==='refused'?'Refusée':'En attente de validation';
+  document.getElementById('requestDetailContent').innerHTML = `
+    <div class="detail-section"><h3>État de la demande</h3><div class="detail-grid">
+      <div class="detail-label">Statut</div><div>${statusBadge(r.status)}</div>
+      <div class="detail-label">Créée le</div><div>${new Date(r.createdAt).toLocaleString('fr-FR')}</div>
+      <div class="detail-label">Validée le</div><div>${r.validatedAt?new Date(r.validatedAt).toLocaleString('fr-FR'):'—'}</div>
+      ${r.refusalReason?`<div class="detail-label">Motif du refus</div><div>${esc(r.refusalReason)}</div>`:''}
+    </div></div>
+    <div class="detail-section"><h3>Identification de la sortie</h3><div class="detail-grid">
+      <div class="detail-label">Intitulé</div><div>${esc(r.title)}</div>
+      <div class="detail-label">Date</div><div>${fmtDate(r.date)}</div>
+      <div class="detail-label">Horaires</div><div>${esc(r.hours)}</div>
+      <div class="detail-label">Lieu</div><div>${esc(r.place)}</div>
+      <div class="detail-label">Classes</div><div>${esc(r.classes)}</div>
+      <div class="detail-label">Nombre d’élèves</div><div>${esc(r.students)}</div>
+    </div></div>
+    <div class="detail-section"><h3>Porteur du projet et encadrement</h3><div class="detail-grid">
+      <div class="detail-label">Porteur du projet</div><div>${esc(r.teacherName)}</div>
+      <div class="detail-label">Courriel</div><div>${esc(r.teacherEmail)}</div>
+      <div class="detail-label">Accompagnateurs prévus</div><div>${nl2br(r.chaperones || 'À préciser')}</div>
+    </div></div>
+    <div class="detail-section"><h3>Organisation matérielle</h3><div class="detail-grid">
+      <div class="detail-label">Transport à réserver</div><div>${esc(r.transport)}</div>
+      <div class="detail-label">Pique-niques à prévoir</div><div>${esc(r.picnic)}</div>
+      <div class="detail-label">Autorisations parentales</div><div>${esc(r.authorizations)}</div>
+    </div></div>
+    <div class="detail-section"><h3>Objectifs pédagogiques</h3><p>${nl2br(r.objectives)}</p></div>
+    <div class="detail-section"><h3>Observations particulières / PAI / sécurité</h3><p>${nl2br(r.pai || 'Aucune observation particulière signalée.')}</p></div>
+  `;
+  let actions=`<button class="secondary" onclick="closeRequestModal()">Retour au tableau de bord</button>`;
+  if(currentRole==='proviseur' && r.status==='pending'){
+    actions = `<button class="success" onclick="approveFromModal(${r.id})">Valider cette demande</button><button class="danger" onclick="refuseFromModal(${r.id})">Refuser cette demande</button>` + actions;
+  }
+  document.getElementById('requestDetailActions').innerHTML=actions;
+  document.getElementById('requestModal').classList.remove('hidden');
+}
+function closeRequestModal(){ document.getElementById('requestModal').classList.add('hidden'); }
+function approveFromModal(id){ approve(id); closeRequestModal(); }
+function refuseFromModal(id){ refuse(id); closeRequestModal(); }
+function approve(id){ const data=load(); const r=data.find(x=>x.id===id); r.status='approved'; r.validatedAt=new Date().toISOString(); save(data); alert('Sortie validée. La note de service et l’événement agenda sont générés.'); renderDashboard(); }
+function refuse(id){ const reason=prompt('Motif du refus :'); if(reason===null)return; const data=load(); const r=data.find(x=>x.id===id); r.status='refused'; r.refusalReason=reason; save(data); renderDashboard(); }
+function deleteReq(id){ if(!confirm('Supprimer cette demande ?'))return; save(load().filter(r=>r.id!==id)); renderDashboard(); }
+function renderAgenda(){ const approved=load().filter(r=>r.status==='approved').sort((a,b)=>a.date.localeCompare(b.date)); document.getElementById('agendaList').innerHTML = approved.length? approved.map(r=>`<div class="agenda-item"><strong>${fmtDate(r.date)} — ${esc(r.title)}</strong><br>${esc(r.hours)} · ${esc(r.place)} · ${esc(r.classes)}<div class="actions"><button class="lightbtn" onclick="downloadICS(${r.id})">Télécharger .ics</button><button class="lightbtn" onclick="viewNote(${r.id})">Voir note</button></div></div>`).join(''):'<p class="muted">Aucune sortie validée.</p>'; }
+function renderNotes(){ const approved=load().filter(r=>r.status==='approved'); document.getElementById('notesList').innerHTML = approved.length? approved.map(r=>`<div class="card"><h3>${esc(r.title)} — ${fmtDate(r.date)}</h3><div class="note-preview">${makeNote(r)}</div><div class="actions no-print"><button onclick="copyNote(${r.id})">Copier la note</button><button onclick="printNote(${r.id})">Imprimer</button></div></div>`).join(''):'<p class="muted">Aucune note générée.</p>'; }
+function viewNote(id){ showTab('notes'); setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),100); }
+function makeNote(r){ return `LYCÉE — NOTE DE SERVICE\n\nObjet : Organisation de la sortie pédagogique « ${r.title} »\n\nUne sortie pédagogique est organisée selon les modalités suivantes :\n\n- Porteur du projet : ${r.teacherName}\n- Classes concernées : ${r.classes}\n- Date : ${fmtDate(r.date)}\n- Horaires : ${r.hours}\n- Lieu : ${r.place}\n- Nombre d’élèves concernés : ${r.students}\n- Accompagnateurs prévus : ${r.chaperones || 'à préciser'}\n\nObjectifs pédagogiques :\n${r.objectives}\n\nConsignes d’organisation et de sécurité :\nLe porteur de projet veillera à recueillir, avant le départ, l’ensemble des autorisations parentales nécessaires lorsque celles-ci sont requises. Il lui appartient également de vérifier les situations particulières des élèves concernés et de se munir des éléments utiles relatifs aux PAI, dans le respect de la confidentialité des informations médicales.\n\nLe service d’intendance est informé des besoins suivants :\n- Pique-niques à prévoir : ${r.picnic}\n- Transport à réserver : ${r.transport}\n\nLe cas échéant, le service d’intendance prendra les dispositions nécessaires pour la préparation des pique-niques et/ou la réservation des transports.\n\nObservations particulières :\n${r.pai || 'Aucune observation particulière signalée.'}\n\nLa sortie est validée par le proviseur le ${r.validatedAt ? new Date(r.validatedAt).toLocaleDateString('fr-FR') : 'date de validation non renseignée'}.\n\nLe Proviseur`; }
+function copyNote(id){ const r=load().find(x=>x.id===id); navigator.clipboard.writeText(makeNote(r)); alert('Note copiée dans le presse-papiers.'); }
+function printNote(id){ const r=load().find(x=>x.id===id); const w=window.open('','_blank'); w.document.write('<pre style="font-family:Arial;white-space:pre-wrap;font-size:14px;line-height:1.45">'+esc(makeNote(r))+'</pre>'); w.document.close(); w.print(); }
+function downloadICS(id){ const r=load().find(x=>x.id===id); if(!r)return; const date=r.date.replaceAll('-',''); const ics=`BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Lycee//Sorties pedagogiques//FR\nBEGIN:VEVENT\nUID:${r.id}@sorties-pedagogiques\nDTSTAMP:${icsStamp(new Date())}\nDTSTART;VALUE=DATE:${date}\nSUMMARY:${r.title}\nLOCATION:${r.place}\nDESCRIPTION:Classes: ${r.classes} - Porteur: ${r.teacherName} - Horaires: ${r.hours}\nEND:VEVENT\nEND:VCALENDAR`; downloadFile('sortie_'+safe(r.title)+'.ics',ics,'text/calendar'); }
+function exportCSV(){ const rows=load(); const head=['statut','date','horaires','titre','classes','lieu','porteur','email','eleves','transport','pique_niques']; const csv=[head.join(';')].concat(rows.map(r=>head.map(h=>`"${String(mapCSV(r,h)).replaceAll('"','""')}"`).join(';'))).join('\n'); downloadFile('demandes_sorties.csv',csv,'text/csv'); }
+function mapCSV(r,h){return {statut:r.status,date:r.date,horaires:r.hours,titre:r.title,classes:r.classes,lieu:r.place,porteur:r.teacherName,email:r.teacherEmail,eleves:r.students,transport:r.transport,pique_niques:r.picnic}[h]||''}
+function clearDemoData(){ if(confirm('Effacer toutes les données enregistrées dans ce navigateur ?')){ localStorage.removeItem(STORAGE_KEY); renderDashboard(); }}
+function downloadFile(name,content,type){ const blob=new Blob([content],{type}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+function fmtDate(d){ return d ? new Date(d+'T00:00:00').toLocaleDateString('fr-FR') : ''; }
+function icsStamp(d){ return d.toISOString().replace(/[-:]/g,'').split('.')[0]+'Z'; }
+function safe(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'')}
+function nl2br(s){return esc(s).replace(/\n/g,'<br>')}
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+</script>
+</body>
+</html>
